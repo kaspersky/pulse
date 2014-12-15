@@ -1,4 +1,8 @@
+cmake_minimum_required(VERSION 2.8)
+
 project(main)
+
+set(CMAKE_CXX_FLAGS "-g -std=c++11 -pthread")
 
 add_library(core STATIC
   bitboard.cpp
