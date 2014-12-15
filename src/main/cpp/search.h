@@ -16,6 +16,7 @@
 #include <chrono>
 #include <thread>
 #include <condition_variable>
+#include <atomic>
 
 namespace pulse {
 
@@ -48,7 +49,7 @@ private:
    */
   class Timer {
   public:
-    Timer(bool& timerStopped, bool& doTimeManagement, int& currentDepth, const int& initialDepth, bool& abort);
+    Timer(bool& timerStopped, bool& doTimeManagement, int& currentDepth, const int& initialDepth, std::atomic_bool &abort);
 
     void start(uint64_t searchTime);
     void stop();
@@ -62,7 +63,7 @@ private:
     int& currentDepth;
     const int& initialDepth;
 
-    bool& abort;
+    std::atomic_bool& abort;
 
     void run(uint64_t searchTime);
   };
@@ -111,7 +112,7 @@ private:
 
   // Search parameters
   MoveList<RootEntry> rootMoves;
-  bool abort;
+  std::atomic_bool abort;
   uint64_t totalNodes;
   const int initialDepth = 1;
   int currentDepth;
@@ -123,8 +124,8 @@ private:
   void checkStopConditions();
   void updateSearch(int ply);
   void searchRoot(int depth, int alpha, int beta);
-  int search(int depth, int alpha, int beta, int ply);
-  int quiescent(int depth, int alpha, int beta, int ply);
+  int search(Position &position, int depth, int alpha, int beta, int ply);
+  int quiescent(Position &position, int depth, int alpha, int beta, int ply);
   void savePV(int move, MoveVariation& src, MoveVariation& dest);
 };
 

@@ -12,7 +12,7 @@
 
 namespace pulse {
 
-Search::Timer::Timer(bool& timerStopped, bool& doTimeManagement, int& currentDepth, const int& initialDepth, bool& abort)
+Search::Timer::Timer(bool& timerStopped, bool& doTimeManagement, int& currentDepth, const int& initialDepth, std::atomic_bool& abort)
     : timerStopped(timerStopped), doTimeManagement(doTimeManagement),
     currentDepth(currentDepth), initialDepth(initialDepth), abort(abort) {
 }
@@ -358,9 +358,9 @@ void Search::searchRoot(int depth, int alpha, int beta) {
     currentMoveNumber = i + 1;
     protocol.sendStatus(false, currentDepth, currentMaxDepth, totalNodes, currentMove, currentMoveNumber);
 
-    position.makeMove(move);
-    int value = -search(depth - 1, -beta, -alpha, ply + 1);
-    position.undoMove(move);
+    Position new_pos(position);
+    new_pos.makeMove(move);
+    int value = -search(new_pos, depth - 1, -beta, -alpha, ply + 1);
 
     if (abort) {
       return;
@@ -385,11 +385,11 @@ void Search::searchRoot(int depth, int alpha, int beta) {
   }
 }
 
-int Search::search(int depth, int alpha, int beta, int ply) {
+int Search::search(Position &position, int depth, int alpha, int beta, int ply) {
   // We are at a leaf/horizon. So calculate that value.
   if (depth <= 0) {
     // Descend into quiescent
-    return quiescent(0, alpha, beta, ply);
+    return quiescent(position, 0, alpha, beta, ply);
   }
 
   updateSearch(ply);
@@ -417,7 +417,7 @@ int Search::search(int depth, int alpha, int beta, int ply) {
     position.makeMove(move);
     if (!position.isCheck(Color::opposite(position.activeColor))) {
       ++searchedMoves;
-      value = -search(depth - 1, -beta, -alpha, ply + 1);
+      value = -search(position, depth - 1, -beta, -alpha, ply + 1);
     }
     position.undoMove(move);
 
@@ -457,7 +457,7 @@ int Search::search(int depth, int alpha, int beta, int ply) {
   return bestValue;
 }
 
-int Search::quiescent(int depth, int alpha, int beta, int ply) {
+int Search::quiescent(Position &position, int depth, int alpha, int beta, int ply) {
   updateSearch(ply);
 
   // Abort conditions
@@ -500,7 +500,7 @@ int Search::quiescent(int depth, int alpha, int beta, int ply) {
     position.makeMove(move);
     if (!position.isCheck(Color::opposite(position.activeColor))) {
       ++searchedMoves;
-      value = -quiescent(depth - 1, -beta, -alpha, ply + 1);
+      value = -quiescent(position, depth - 1, -beta, -alpha, ply + 1);
     }
     position.undoMove(move);
 
