@@ -336,46 +336,39 @@ void Search::updateSearch(int ply) {
   protocol.sendStatus(currentDepth, currentMaxDepth, totalNodes, currentMove, currentMoveNumber);
 }
 
-void Search::searchRoot(int depth, int alpha, int beta) {
-  int ply = 0;
+void Search::searchThread(int i, Position position, int depth, int &alpha, int beta)
+{
+  int move = rootMoves.entries[i]->move;
 
-  updateSearch(ply);
+  currentMove = move;
+  currentMoveNumber = i + 1;
+  protocol.sendStatus(false, currentDepth, currentMaxDepth, totalNodes, currentMove, currentMoveNumber);
 
-  // Abort conditions
+  position.makeMove(move);
+  int value = -search(position, depth - 1, -beta, -alpha, 1);
+
   if (abort) {
     return;
   }
 
-  // Reset all values, so the best move is pushed to the front
-  for (int i = 0; i < rootMoves.size; ++i) {
-    rootMoves.entries[i]->value = -Value::INFINITE;
+  // Do we have a better value?
+  if (value > alpha) {
+    alpha = value;
+
+    // We found a new best move
+    rootMoves.entries[i]->value = value;
+    savePV(move, pv[1], rootMoves.entries[i]->pv);
+
+    protocol.sendMove(*rootMoves.entries[i], currentDepth, currentMaxDepth, totalNodes);
   }
+}
 
-  for (int i = 0; i < rootMoves.size; ++i) {
-    int move = rootMoves.entries[i]->move;
+void Search::searchRoot(int depth, int alpha, int beta) {
+  updateSearch(0);
 
-    currentMove = move;
-    currentMoveNumber = i + 1;
-    protocol.sendStatus(false, currentDepth, currentMaxDepth, totalNodes, currentMove, currentMoveNumber);
-
-    Position new_pos(position);
-    new_pos.makeMove(move);
-    int value = -search(new_pos, depth - 1, -beta, -alpha, ply + 1);
-
-    if (abort) {
-      return;
-    }
-
-    // Do we have a better value?
-    if (value > alpha) {
-      alpha = value;
-
-      // We found a new best move
-      rootMoves.entries[i]->value = value;
-      savePV(move, pv[ply + 1], rootMoves.entries[i]->pv);
-
-      protocol.sendMove(*rootMoves.entries[i], currentDepth, currentMaxDepth, totalNodes);
-    }
+  // Abort conditions
+  if (abort) {
+    return;
   }
 
   if (rootMoves.size == 0) {
@@ -383,6 +376,14 @@ void Search::searchRoot(int depth, int alpha, int beta) {
     // further. Abort!
     abort = true;
   }
+
+  // Reset all values, so the best move is pushed to the front
+  for (int i = 0; i < rootMoves.size; ++i) {
+    rootMoves.entries[i]->value = -Value::INFINITE;
+  }
+
+  for (int i = 0; i < rootMoves.size; ++i)
+    searchThread(i, position, depth, alpha, beta);
 }
 
 int Search::search(Position &position, int depth, int alpha, int beta, int ply) {
