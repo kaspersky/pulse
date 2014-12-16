@@ -336,7 +336,7 @@ void Search::updateSearch(int ply) {
   protocol.sendStatus(currentDepth, currentMaxDepth, totalNodes, currentMove, currentMoveNumber);
 }
 
-void Search::searchThread(int i, Position position, int depth, std::atomic_int_fast32_t &alpha, int beta)
+void Search::searchThread(int i, Position position, int depth, std::atomic_int_fast32_t &alpha, int beta, std::mutex &mutex)
 {
   int move = rootMoves.entries[i]->move;
 
@@ -357,7 +357,9 @@ void Search::searchThread(int i, Position position, int depth, std::atomic_int_f
 
     // We found a new best move
     rootMoves.entries[i]->value = value;
+    mutex.lock();
     savePV(move, pv[1], rootMoves.entries[i]->pv);
+    mutex.unlock();
 
     protocol.sendMove(*rootMoves.entries[i], currentDepth, currentMaxDepth, totalNodes);
   }
@@ -384,8 +386,9 @@ void Search::searchRoot(int depth, int alpha, int beta) {
 
   std::atomic_int_fast32_t atomic_alpha;
   atomic_alpha = alpha;
+  std::mutex mutex;
   for (int i = 0; i < rootMoves.size; ++i)
-    searchThread(i, position, depth, atomic_alpha, beta);
+    searchThread(i, position, depth, atomic_alpha, beta, mutex);
 }
 
 int Search::search(Position &position, int depth, int alpha, int beta, int ply) {
