@@ -124,7 +124,7 @@ private:
   void checkStopConditions();
   void updateSearch(int ply);
   void searchRoot(int depth, int alpha, int beta);
-  void searchThread(int i, Position position, int depth, int &alpha, int beta);
+  void searchThread(int i, Position position, int depth, std::atomic_int_fast32_t &alpha, int beta);
   int search(Position &position, int depth, int alpha, int beta, int ply);
   int quiescent(Position &position, int depth, int alpha, int beta, int ply);
   void savePV(int move, MoveVariation& src, MoveVariation& dest);

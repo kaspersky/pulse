@@ -336,7 +336,7 @@ void Search::updateSearch(int ply) {
   protocol.sendStatus(currentDepth, currentMaxDepth, totalNodes, currentMove, currentMoveNumber);
 }
 
-void Search::searchThread(int i, Position position, int depth, int &alpha, int beta)
+void Search::searchThread(int i, Position position, int depth, std::atomic_int_fast32_t &alpha, int beta)
 {
   int move = rootMoves.entries[i]->move;
 
@@ -382,8 +382,10 @@ void Search::searchRoot(int depth, int alpha, int beta) {
     rootMoves.entries[i]->value = -Value::INFINITE;
   }
 
+  std::atomic_int_fast32_t atomic_alpha;
+  atomic_alpha = alpha;
   for (int i = 0; i < rootMoves.size; ++i)
-    searchThread(i, position, depth, alpha, beta);
+    searchThread(i, position, depth, atomic_alpha, beta);
 }
 
 int Search::search(Position &position, int depth, int alpha, int beta, int ply) {
