@@ -113,7 +113,7 @@ private:
   // Search parameters
   MoveList<RootEntry> rootMoves;
   std::atomic_bool abort;
-  uint64_t totalNodes;
+  std::atomic_uint_fast64_t totalNodes;
   const int initialDepth = 1;
   int currentDepth;
   int currentMaxDepth;
