@@ -116,7 +116,7 @@ private:
   std::atomic_uint_fast64_t totalNodes;
   const int initialDepth = 1;
   int currentDepth;
-  int currentMaxDepth;
+  std::atomic_int_fast32_t currentMaxDepth;
   int currentMove;
   int currentMoveNumber;
   std::array<MoveVariation, Depth::MAX_PLY + 1> pv;
