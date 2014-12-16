@@ -239,7 +239,7 @@ void Search::run() {
     }
 
     // Populate root move list
-    MoveList<MoveEntry>& moves = moveGenerators[0].getLegalMoves(position, 1, position.isCheck());
+    MoveList<MoveEntry>& moves = moveGenerators[0][0].getLegalMoves(position, 1, position.isCheck());
     for (int i = 0; i < moves.size; ++i) {
       int move = moves.entries[i]->move;
       rootMoves.entries[rootMoves.size]->move = move;
@@ -345,7 +345,7 @@ void Search::searchThread(int i, Position position, int depth, std::atomic_int_f
   protocol.sendStatus(false, currentDepth, currentMaxDepth, totalNodes, currentMove, currentMoveNumber);
 
   position.makeMove(move);
-  int value = -search(position, depth - 1, -beta, -alpha, 1);
+  int value = -search(position, depth - 1, -beta, -alpha, 1, moveGenerators[i]);
 
   if (abort) {
     return;
@@ -391,11 +391,11 @@ void Search::searchRoot(int depth, int alpha, int beta) {
     searchThread(i, position, depth, atomic_alpha, beta, mutex);
 }
 
-int Search::search(Position &position, int depth, int alpha, int beta, int ply) {
+int Search::search(Position &position, int depth, int alpha, int beta, int ply, std::array<MoveGenerator, Depth::MAX_PLY> &moveGenerators) {
   // We are at a leaf/horizon. So calculate that value.
   if (depth <= 0) {
     // Descend into quiescent
-    return quiescent(position, 0, alpha, beta, ply);
+    return quiescent(position, 0, alpha, beta, ply, moveGenerators);
   }
 
   updateSearch(ply);
@@ -423,7 +423,7 @@ int Search::search(Position &position, int depth, int alpha, int beta, int ply) 
     position.makeMove(move);
     if (!position.isCheck(Color::opposite(position.activeColor))) {
       ++searchedMoves;
-      value = -search(position, depth - 1, -beta, -alpha, ply + 1);
+      value = -search(position, depth - 1, -beta, -alpha, ply + 1, moveGenerators);
     }
     position.undoMove(move);
 
@@ -463,7 +463,7 @@ int Search::search(Position &position, int depth, int alpha, int beta, int ply) 
   return bestValue;
 }
 
-int Search::quiescent(Position &position, int depth, int alpha, int beta, int ply) {
+int Search::quiescent(Position &position, int depth, int alpha, int beta, int ply, std::array<MoveGenerator, Depth::MAX_PLY> &moveGenerators) {
   updateSearch(ply);
 
   // Abort conditions
@@ -506,7 +506,7 @@ int Search::quiescent(Position &position, int depth, int alpha, int beta, int pl
     position.makeMove(move);
     if (!position.isCheck(Color::opposite(position.activeColor))) {
       ++searchedMoves;
-      value = -quiescent(position, depth - 1, -beta, -alpha, ply + 1);
+      value = -quiescent(position, depth - 1, -beta, -alpha, ply + 1, moveGenerators);
     }
     position.undoMove(move);
 
