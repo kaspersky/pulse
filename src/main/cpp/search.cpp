@@ -387,8 +387,13 @@ void Search::searchRoot(int depth, int alpha, int beta) {
   std::atomic_int_fast32_t atomic_alpha;
   atomic_alpha = alpha;
   std::mutex mutex;
+
+  std::vector<std::thread> search_threads;
+
   for (int i = 0; i < rootMoves.size; ++i)
-    searchThread(i, position, depth, atomic_alpha, beta, mutex, pv);
+    search_threads.push_back(std::thread(&Search::searchThread, this, i, position, depth, std::ref(atomic_alpha), beta, std::ref(mutex), pv));
+  for (auto &thread : search_threads)
+      thread.join();
 }
 
 int Search::search(Position &position, int depth, int alpha, int beta, int ply, std::array<MoveGenerator, Depth::MAX_PLY> &moveGenerators, std::array<MoveVariation, Depth::MAX_PLY + 1> &pv) {
