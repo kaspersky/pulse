@@ -336,8 +336,9 @@ void Search::updateSearch(int ply) {
   protocol.sendStatus(currentDepth, currentMaxDepth, totalNodes, currentMove, currentMoveNumber);
 }
 
-void Search::searchThread(int i, Position position, int depth, std::atomic_int_fast32_t &alpha, int beta, std::mutex &mutex, std::array<MoveVariation, Depth::MAX_PLY + 1> pv)
+void Search::searchThread(int i, Position position, int depth, std::atomic_int_fast32_t &alpha, int beta, std::mutex &mutex, std::array<MoveVariation, Depth::MAX_PLY + 1> pv, Semaphore &semaphore)
 {
+  semaphore.acquire();
   int move = rootMoves.entries[i]->move;
 
   currentMove = move;
@@ -351,18 +352,19 @@ void Search::searchThread(int i, Position position, int depth, std::atomic_int_f
     return;
   }
 
+  mutex.lock();
   // Do we have a better value?
   if (value > alpha) {
     alpha = value;
 
     // We found a new best move
     rootMoves.entries[i]->value = value;
-    mutex.lock();
     savePV(move, pv[1], rootMoves.entries[i]->pv);
-    mutex.unlock();
 
     protocol.sendMove(*rootMoves.entries[i], currentDepth, currentMaxDepth, totalNodes);
   }
+  mutex.unlock();
+  semaphore.release();
 }
 
 void Search::searchRoot(int depth, int alpha, int beta) {
@@ -387,11 +389,12 @@ void Search::searchRoot(int depth, int alpha, int beta) {
   std::atomic_int_fast32_t atomic_alpha;
   atomic_alpha = alpha;
   std::mutex mutex;
+  Semaphore semaphore(std::thread::hardware_concurrency());
 
   std::vector<std::thread> search_threads;
 
   for (int i = 0; i < rootMoves.size; ++i)
-    search_threads.push_back(std::thread(&Search::searchThread, this, i, position, depth, std::ref(atomic_alpha), beta, std::ref(mutex), pv));
+    search_threads.push_back(std::thread(&Search::searchThread, this, i, position, depth, std::ref(atomic_alpha), beta, std::ref(mutex), pv, std::ref(semaphore)));
   for (auto &thread : search_threads)
       thread.join();
 }
