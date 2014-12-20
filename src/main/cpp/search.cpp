@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <string>
+#include <cilk/cilk.h>
 
 namespace pulse {
 
@@ -388,7 +389,8 @@ void Search::searchRoot(int depth, int alpha, int beta) {
   atomic_alpha = alpha;
   std::mutex mutex;
   for (int i = 0; i < rootMoves.size; ++i)
-    searchThread(i, position, depth, atomic_alpha, beta, mutex, pv);
+    cilk_spawn searchThread(i, position, depth, atomic_alpha, beta, mutex, pv);
+	cilk_sync;
 }
 
 int Search::search(Position &position, int depth, int alpha, int beta, int ply, std::array<MoveGenerator, Depth::MAX_PLY> &moveGenerators, std::array<MoveVariation, Depth::MAX_PLY + 1> &pv) {
